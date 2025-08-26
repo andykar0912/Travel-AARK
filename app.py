@@ -1,9 +1,12 @@
 #%%writefile app.py
 
 import streamlit
-import google
+from google import genai
 import json
 import pydantic
+import requests
+import urllib.parse
+
 
 #from langchain_openai.chat_models import ChatOpenAI
 
@@ -11,7 +14,7 @@ with streamlit.sidebar:
   globals()["gemini_api_key"] = streamlit.text_input ("Gemini API Key", type="password")
   globals()["google_maps_api_key"] = streamlit.text_input ("Google Maps API Key", type="password")
 
-  globals()["genAIClient"] = google.genai.Client(api_key=gemini_api_key)
+  globals()["genAIClient"] = genai.Client(api_key=gemini_api_key)
 
 def loadTravelDatesFrame():
   with datesFrame:
@@ -54,7 +57,7 @@ class City(pydantic.BaseModel):
     interests: list[str]
 
 def loadTop10Cities():
-  global destination, travel_interests, start_date, end_date
+  global destination, travel_interests, start_date, end_date, destinationColumn1
 
   if destination:
     top10cities_query=f"List the top 10 cities for tourism in {destination}"
@@ -73,21 +76,155 @@ def loadTop10Cities():
     globals()["top10cities"] = json.loads(top10cities_response.text)
     print("Top 10 cities response:", top10cities)
 
+    streamlit.session_state["top10cities"]=top10cities
+
+    # with destinationColumn1:
+    #   selected_cities=streamlit.multiselect("Select Cities: ", top10cities)
+
 def loadDestinationColumn1():
-  global top10cities
+  # global top10cities
 
   globals()["destination"]=streamlit.text_input("Destination (city / country / region): ")
 
-  # if streamlit.button("Load Cities to Visit"):
-  #   streamlit.session_state["destination"]=destination
+  if streamlit.button("Load Cities to Visit"):
+    streamlit.session_state["destination"]=destination
+    loadTop10Cities()
 
-  streamlit.button("Load Cities to Visit", on_click=loadTop10Cities)
+  # streamlit.button("Load Cities to Visit", on_click=loadTop10Cities)
 
-  if "destination" in streamlit.session_state:
-    selected_cities=streamlit.multiselect("Select Cities: ", top10cities)
+  if "top10cities" in streamlit.session_state:
+    top10cities_list=[]
+    for city_entry in streamlit.session_state["top10cities"]:
+      top10cities_list.append(f"{city_entry['rank']}. {city_entry['city']}, {city_entry['country']}")
+    streamlit.session_state["selected_cities"]=streamlit.multiselect("Select Cities: ", top10cities_list)
+
+
+def getCurrentLocation():
+  global google_maps_api_key
+
+  # get location in latitude and longitude format
+  google_maps_api_url= f"https://www.googleapis.com/geolocation/v1/geolocate?key={google_maps_api_key}"
+  location_response = requests.post(google_maps_api_url)
+
+  if location_response.status_code == 200:
+    # print("Location response:", location_response.text)
+    current_location = json.loads(location_response.text)
+
+    # use the latitude and longitude to get the detailed location
+    google_maps_api_url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={current_location['location']['lat']},{current_location['location']['lng']}&key={google_maps_api_key}&result_type=political%7Clocality"
+    detailed_location_response= requests.get(google_maps_api_url)
+    if detailed_location_response.status_code == 200:
+      detailed_current_location = json.loads(detailed_location_response.text)
+      if detailed_current_location:
+        # print("Detailed Current location:", json.dumps(detailed_current_location,indent=2))
+
+        # using the detailed location, find the city (usually "types": ["locality","political"]) and the country (usually "types": ["country","political"])
+        for address_component in detailed_current_location['results'][0]['address_components']:
+          if "locality" in address_component['types'] and "political" in address_component['types']:
+            globals()["current_city_name"] = address_component['long_name']
+          elif "country" in address_component['types'] and "political" in address_component['types']:
+            globals()["current_country_name"] = address_component['long_name']
+
+            print(f"Current city: {current_city_name}, {current_country_name}")
+          else:
+            print("No address found for the current location.")
+      else:
+        print("Failed to get detailed location:", detailed_location_response.status_code)
+    else:
+        print("Failed to get current location:", location_response.status_code)
+
+def loadCurrentLocationMap():
+  global current_city_name, current_country_name, google_maps_api_key
+
+  google_maps_api_url = f"https://maps.googleapis.com/maps/api/staticmap?"
+  current_location=urllib.parse.quote_plus(f"{current_city_name},{current_country_name}")  # URL encode the current location
+
+  map_marker = f"markers={current_location}"
+
+  google_maps_api_url= f"{google_maps_api_url}{map_marker}&size=600x600&key={google_maps_api_key}"
+  print("Google Maps API URL for current location:", google_maps_api_url)
+
+  mapImageFile=open('current_location_map.png', 'wb')
+  map_response=requests.get(google_maps_api_url)
+
+  if map_response.status_code == 200:
+    mapImageFile.write(map_response.content)
+    mapImageFile.close()
+    print("Map for Current location generated successfully!")
+  else:
+    print("Failed to generate map for current location:", map_response.status_code)
+
+
+def loadDestinationMap():
+  global google_maps_api_key, destination
+
+  google_maps_api_url = f"https://maps.googleapis.com/maps/api/staticmap?"
+  urle_destination=urllib.parse.quote_plus(streamlit.session_state["destination"])  # URL encode the destination
+
+  # map_marker = f"markers=color:blue%7Clabel:{map_destination}%7C{map_destination}"
+  map_marker = f"markers={urle_destination}"
+
+  google_maps_api_url= f"{google_maps_api_url}{map_marker}&size=600x600&key={google_maps_api_key}"
+  print("Google Maps API URL for destination:", google_maps_api_url)
+
+  mapImageFile=open('destination_map.png', 'wb')
+  map_response=requests.get(google_maps_api_url)
+
+  if map_response.status_code == 200:
+    mapImageFile.write(map_response.content)
+    mapImageFile.close()
+    print("Map for Destination generated successfully!")
+  else:
+    print("Failed to generate map for Destination:", map_response.status_code)
+
+def loadMapSelectedCities():
+  global top10cities, google_maps_api_key, destination
+
+  # cities_list = [citiesListBox.get(i) for i in citiesListBox.curselection()]
+  globals()["selected_cities_list"]=[]
+
+  google_maps_api_url = f"https://maps.googleapis.com/maps/api/staticmap?"
+  map_markers=[]
+
+  for city_entry in streamlit.session_state["selected_cities"]:
+    city_entry_num = city_entry.split('.')[0]
+    city_name=streamlit.session_state["top10cities"][int(city_entry_num)-1]['city']
+    country_name=streamlit.session_state["top10cities"][int(city_entry_num)-1]['country']
+
+    selected_cities_list.append({'rank': city_entry_num, 'city': city_name, 'country': country_name})
+
+    map_markers.append(f"markers=color:blue%7Clabel:{city_entry_num}%7C{urllib.parse.quote_plus(city_name)}%2C{urllib.parse.quote_plus(country_name)}")
+
+  map_markers_str= '&'.join(map_markers)
+  print("Map markers:", map_markers_str)
+     
+  google_maps_api_url= f"{google_maps_api_url}{map_markers_str}&size=1000x500&key={google_maps_api_key}"
+  # print("Google Maps API URL:", google_maps_api_url)
+  mapImageFile=open('selected_cities_map.png', 'wb')
+  map_response=requests.get(google_maps_api_url)
+
+  if map_response.status_code == 200:
+    mapImageFile.write(map_response.content)
+    mapImageFile.close()
+    print("Map generated successfully!")
+  else:
+    print("Failed to generate map:", map_response.status_code)
 
 def loadDestinationColumn2():
-  streamlit.image("world_map.png")
+  # streamlit.image("world_map.png")
+  if "selected_cities" in streamlit.session_state and streamlit.session_state["selected_cities"] != []:
+    loadMapSelectedCities()
+    streamlit.image("selected_cities_map.png")
+  elif "top10cities" in streamlit.session_state:
+    loadDestinationMap()
+    streamlit.image("destination_map.png")
+  elif "destination" in streamlit.session_state:
+    loadDestinationMap()
+    streamlit.image("destination_map.png")
+  else:
+    getCurrentLocation()
+    loadCurrentLocationMap()
+    streamlit.image("current_location_map.png")
 
 def loadDestinationDetailsFrame():
   streamlit.header("Destination Details")
