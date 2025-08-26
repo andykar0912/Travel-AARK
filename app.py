@@ -1,88 +1,111 @@
 #%%writefile app.py
 
-import streamlit as st
-from openai import OpenAI
+import streamlit
+import google
+import json
+import pydantic
 
 #from langchain_openai.chat_models import ChatOpenAI
 
-with st.sidebar:
-  openai_api_key = st.text_input ("OpenAI API Key", type="password")
+with streamlit.sidebar:
+  globals()["gemini_api_key"] = streamlit.text_input ("Gemini API Key", type="password")
+  globals()["google_maps_api_key"] = streamlit.text_input ("Google Maps API Key", type="password")
 
-st.title("Travel AARK: Planning trip made easier")
-st.header("A streamlit chatbot powered by OpenAI:")
-st.image("world_map.png")
+  globals()["genAIClient"] = google.genai.Client(api_key=gemini_api_key)
 
-st.subheader("Please select your options")
-# Radio button with horizontal layout for continent
-continent = st.radio("Which continent do you want to travel?",
-['Americas', 'Australia', 'Europe', 'Asia', 'Africa'], horizontal=True)
-#Plan to add a list of countries based on the continent selected.
-#Plan to add a list of cities based on the country selected.
-location = st.text_input('Do you have a city in mind?')
+def loadTravelDatesFrame():
+  with datesFrame:
+    streamlit.subheader("Dates")
 
-#st.subheader("Vacation Date")
-vacation_date = st.date_input("When do you want to start your vacation?")
-residence = st.text_input('Where do you live?')
+    globals()["startDate"] = streamlit.date_input("Start Date: ")
+    globals()["endDate"] = streamlit.date_input("End Date: ")
 
-#Plan to add a google map from the residence to the location selected. Create a google_map api key
+    globals()["number_of_days"]=endDate-startDate
+    streamlit.success(f"Number of Days: {number_of_days}")
 
+def loadPassengersFrame():
+  with passengersFrame:
+    streamlit.subheader("Passengers")
 
+    globals()["adults"]=streamlit.text_input("No. of adults: ")
+    globals()["seniors"]=streamlit.text_input("No. of seniors (>60 years): ")
+    globals()["children"]=streamlit.text_input("No. of children: ")
 
-activities = ["Sightseeing", "Swimming", "Water Sports", "Spa", "Theme parks", "Hiking", "Fitness"]
-selection = st.pills("Activities you want in your trip", activities, selection_mode="multi")
-#st.markdown(f"Your selected options: {selection}.")
-#activities = st.radio("What activities do you want?",
-#['Sightseeing', 'swimming', 'water sports', 'spa', 'Kids theme parks', 'Hiking', 'Fitness', 'Fashion'], horizontal=True)
+def loadCostsFrame():
+  with costsFrame:
+    streamlit.subheader("Expenses")
 
-st.subheader("Budget")
+    globals()["travelCosts"] = streamlit.radio("Travel Costs: ", ["Budget", "Standard", "Luxury"])
+    streamlit.success(f"Travel Costs: {travelCosts}")
 
-budget = st.slider('How much are you willing to pay per night?', 100, 1000, 0)
-total_budget = st.slider('What is your total budget for the trip?', 100, 20000, 0)
+def loadTravelDetailsFrame():
+  streamlit.header("Travel Details")
 
-st.subheader("Days")
+  globals()["datesFrame"], globals()["passengersFrame"], globals()["costsFrame"] = streamlit.columns(3)
 
-days = st.slider('How many days do you want to stay?', 0, 20, 0)
+  loadTravelDatesFrame()
+  loadPassengersFrame()
+  loadCostsFrame()
 
-# add a rag 
+class City(pydantic.BaseModel):
+    rank: str
+    city: str
+    country: str
+    interests: list[str]
 
-# Submit button
-if st.button("Submit"):
-    st.write("Thank you for submitting the form")
-    st.header("Based on selected options the following prompt is created:")
-    st.write(f"Consider tourist places in {continent}. List the hotels with a budget of  ${budget} per night. List the places to acoomodate the activities such as {selection} for each of the {days} days")
-    #if st.button("Select this prompt"):
-    question_to_answer=(f"Consider tourist places in {continent}. Specifically the city {location} . Based on the {vacation_date} list the available flights from google search from {residence} along with the flight urls. List the hotels with a budget of  ${budget} per night. plan the trip based on ${total_budget}List the places to acoomodate the activities such as  {selection}")
-    #if st.button("Select this prompt"):
-    if not openai_api_key:
-          st.info("Please add your OpenAI API key")
-          st.stop()
-    client = OpenAI(api_key=openai_api_key)
-    completion = client.chat.completions.create(
-    model="gpt-3.5-turbo",
-      messages=[
-        {"role": "system", "content": "You are aa helpful travel agent with extensive experience in building travel packages for clients"},
-        {"role": "user", "content": question_to_answer}])
-    st.markdown(completion.choices[0].message.content)
+def loadTop10Cities():
+  global destination, travel_interests, start_date, end_date
 
+  if destination:
+    top10cities_query=f"List the top 10 cities for tourism in {destination}"
+    # top10cities_query=f"{top10cities_query} for interests in {travel_interests}"
+    # top10cities_query=f"{top10cities_query} during the period between {start_date} and {end_date}"
 
-if "messages" not in st.session_state:
- st.session_state["messages"] = [{"role": "assistant", "content": "Is there anything else I can help you with?"}]
+    top10cities_response = genAIClient.models.generate_content(
+      model="gemini-2.5-flash",
+      contents=top10cities_query,
+      config={
+    	  "response_mime_type": "application/json",
+        "response_schema": list[City]
+      }
+    )
+    
+    globals()["top10cities"] = json.loads(top10cities_response.text)
+    print("Top 10 cities response:", top10cities)
 
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+def loadDestinationColumn1():
+  global top10cities
 
+  globals()["destination"]=streamlit.text_input("Destination (city / country / region): ")
 
-if prompt := st.chat_input():
-  if not openai_api_key:
-    st.info("Please add your OpenAI API key")
-    st.stop()
-  client = OpenAI(api_key=openai_api_key)
-  st.session_state.messages.append ({"role": "user", "content": prompt})
-  st.chat_message("user").write(prompt)
-  response = client.chat.completions.create(messages=st.session_state.messages, model="gpt-3.5-turbo")
-  msg = response. choices[0] .message.content
-  st.session_state.messages.append ({"role": "user", "content": prompt})
-  st.chat_message("assistant").write(msg)
+  # if streamlit.button("Load Cities to Visit"):
+  #   streamlit.session_state["destination"]=destination
 
+  streamlit.button("Load Cities to Visit", on_click=loadTop10Cities)
 
+  if "destination" in streamlit.session_state:
+    selected_cities=streamlit.multiselect("Select Cities: ", top10cities)
+
+def loadDestinationColumn2():
+  streamlit.image("world_map.png")
+
+def loadDestinationDetailsFrame():
+  streamlit.header("Destination Details")
+
+  globals()["destinationColumn1"], globals()["destinationColumn2"] = streamlit.columns(2)
+
+  with destinationColumn1:
+    loadDestinationColumn1()
+
+  with destinationColumn2:
+    loadDestinationColumn2()
+
+  # with destinationFrame:
+  #  globals()["destination"]=streamlit.text_input("Destination (city / country / region): ")
+  #
+  # with interestsFrame:
+  #  globals()["travel_interests"]=streamlit.multiselect("Choose interests: ", ["Kids", "Beach", "Skiing", "History", "Romance", "Party"])
+
+streamlit.title("AITinerary")
+loadTravelDetailsFrame()
+loadDestinationDetailsFrame()
