@@ -99,7 +99,7 @@ def loadDestinationColumn1():
     top10cities_list=[]
     for city_entry in streamlit.session_state["top10cities"]:
       top10cities_list.append(f"{city_entry['rank']}. {city_entry['city']}, {city_entry['country']}")
-    streamlit.session_state["selected_cities"]=streamlit.multiselect("Select Cities: ", top10cities_list)
+    streamlit.session_state["selected_cities"]=streamlit.multiselect("Top Cities to visit: ", top10cities_list)
 
 
 def getCurrentLocation():
@@ -254,7 +254,7 @@ def addCityToList():
 def loadDestinationColumn2():
   streamlit.session_state["travel_interests"]=streamlit.multiselect("Choose interests: ", ["Kids", "Beach", "Skiing", "History", "Romance", "Party"])
 
-  streamlit.session_state["search_city"]=streamlit.text_input("Add city to List: ")
+  streamlit.session_state["search_city"]=streamlit.text_input("Search additional cities: ")
 
   if streamlit.button("Search city"):
     loadAddCityList()
@@ -263,7 +263,7 @@ def loadDestinationColumn2():
     search_cities_list=[]
     for city_entry in streamlit.session_state["search_cities"]:
       search_cities_list.append(f"{city_entry['rank']}. {city_entry['city']}, {city_entry['country']}")
-    streamlit.session_state["selected_search_cities"]=streamlit.multiselect("Select Cities: ", search_cities_list)
+    streamlit.session_state["selected_search_cities"]=streamlit.multiselect("Select Cities to add: ", search_cities_list)
 
     if streamlit.button("Add Selected City to List"):
       addCityToList()
