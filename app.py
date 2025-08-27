@@ -282,10 +282,7 @@ def loadDestinationDetailsFrame():
   if "selected_cities" in streamlit.session_state and streamlit.session_state["selected_cities"] != []:
     loadMapSelectedCities()
     streamlit.image("selected_cities_map.png")
-  elif "top10cities" in streamlit.session_state:
-    loadDestinationMap()
-    streamlit.image("destination_map.png")
-  elif "destination" in streamlit.session_state:
+  elif "top10cities" in streamlit.session_state or "destination" in streamlit.session_state:
     loadDestinationMap()
     streamlit.image("destination_map.png")
   else:
