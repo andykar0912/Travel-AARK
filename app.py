@@ -57,12 +57,15 @@ class City(pydantic.BaseModel):
     interests: list[str]
 
 def loadTop10Cities():
-  global destination, travel_interests, start_date, end_date, destinationColumn1
+  global destination, start_date, end_date, destinationColumn1
+
+  travel_interests_str=" and ".join(streamlit.session_state["travel_interests"])
 
   if destination:
     top10cities_query=f"List the top 10 cities for tourism in {destination}"
-    # top10cities_query=f"{top10cities_query} for interests in {travel_interests}"
+    top10cities_query=f"{top10cities_query} for {travel_interests_str}"
     # top10cities_query=f"{top10cities_query} during the period between {start_date} and {end_date}"
+    print(f"GenAI Query: {top10cities_query}")
 
     top10cities_response = genAIClient.models.generate_content(
       model="gemini-2.5-flash",
@@ -210,8 +213,72 @@ def loadMapSelectedCities():
   else:
     print("Failed to generate map:", map_response.status_code)
 
+
+def loadAddCityList():
+  # global destination, start_date, end_date, destinationColumn1
+
+  if streamlit.session_state["search_city"]:
+    search_city=streamlit.session_state["search_city"]
+    destination=streamlit.session_state["destination"]
+    search_city_query=f"Find cities with the name {search_city} near {destination}"
+    print(f"GenAI Search Query: {search_city_query}")
+
+    search_city_response = genAIClient.models.generate_content(
+      model="gemini-2.5-flash",
+      contents=search_city_query,
+      config={
+    	  "response_mime_type": "application/json",
+        "response_schema": list[City]
+      }
+    )
+    
+    globals()["search_cities"] = json.loads(search_city_response.text)
+    print("Search cities response:", search_cities)
+
+    streamlit.session_state["search_cities"]=search_cities
+
+def addCityToList():
+  for city_entry in streamlit.session_state["selected_search_cities"]:
+    city_entry_num = city_entry.split('.')[0]
+    search_city_entry=streamlit.session_state["search_cities"][int(city_entry_num)-1]
+    
+    # check if the city is already added to the top10cities list or not
+    for t10city_entry in streamlit.session_state["top10cities"]:
+      if t10city_entry['city'] == search_city_entry['city']:
+        print(f"{t10city_entry} is already added to top10cities list...")
+        return
+
+    new_city_rank=len(streamlit.session_state["top10cities"])+1
+    streamlit.session_state["top10cities"].append({'rank': new_city_rank, 'city': search_city_entry['city'], 'country': search_city_entry['country'], 'interests': search_city_entry['interests']})
+
 def loadDestinationColumn2():
-  # streamlit.image("world_map.png")
+  streamlit.session_state["travel_interests"]=streamlit.multiselect("Choose interests: ", ["Kids", "Beach", "Skiing", "History", "Romance", "Party"])
+
+  streamlit.session_state["search_city"]=streamlit.text_input("Add city to List: ")
+
+  if streamlit.button("Search city"):
+    loadAddCityList()
+
+  if "search_cities" in streamlit.session_state:
+    search_cities_list=[]
+    for city_entry in streamlit.session_state["search_cities"]:
+      search_cities_list.append(f"{city_entry['rank']}. {city_entry['city']}, {city_entry['country']}")
+    streamlit.session_state["selected_search_cities"]=streamlit.multiselect("Select Cities: ", search_cities_list)
+
+    if streamlit.button("Add Selected City to List"):
+      addCityToList()
+
+def loadDestinationDetailsFrame():
+  streamlit.header("Destination Details")
+
+  globals()["destinationColumn1"], globals()["destinationColumn2"] = streamlit.columns(2)
+
+  with destinationColumn1:
+    loadDestinationColumn1()
+
+  with destinationColumn2:
+    loadDestinationColumn2()
+
   if "selected_cities" in streamlit.session_state and streamlit.session_state["selected_cities"] != []:
     loadMapSelectedCities()
     streamlit.image("selected_cities_map.png")
@@ -225,17 +292,6 @@ def loadDestinationColumn2():
     getCurrentLocation()
     loadCurrentLocationMap()
     streamlit.image("current_location_map.png")
-
-def loadDestinationDetailsFrame():
-  streamlit.header("Destination Details")
-
-  globals()["destinationColumn1"], globals()["destinationColumn2"] = streamlit.columns(2)
-
-  with destinationColumn1:
-    loadDestinationColumn1()
-
-  with destinationColumn2:
-    loadDestinationColumn2()
 
   # with destinationFrame:
   #  globals()["destination"]=streamlit.text_input("Destination (city / country / region): ")
