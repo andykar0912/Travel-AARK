@@ -42,7 +42,7 @@ def loadCostsFrame():
     streamlit.success(f"Travel Costs: {travelCosts}")
 
 def loadTravelDetailsFrame():
-  streamlit.header("Travel Details")
+  streamlit.header("Travel Dates and Passenger Details")
 
   globals()["datesFrame"], globals()["passengersFrame"], globals()["costsFrame"] = streamlit.columns(3)
 
@@ -392,5 +392,8 @@ def enter_keys():
 if "gemini_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
   enter_keys()
 else:
-  loadTravelDetailsFrame()
-  loadDestinationDetailsFrame()
+  globals()["travelDetails"], globals()["destinationDetails"], globals()["detailedTravelPlan"] = streamlit.tabs(["Travel Details", "Destination Details", "Detailed Travel Plan"])
+  with globals()["travelDetails"]:
+    loadTravelDetailsFrame()
+  with globals()["destinationDetails"]:
+    loadDestinationDetailsFrame()
