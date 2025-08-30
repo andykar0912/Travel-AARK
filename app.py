@@ -10,11 +10,11 @@ import urllib.parse
 
 #from langchain_openai.chat_models import ChatOpenAI
 
-with streamlit.sidebar:
-  globals()["gemini_api_key"] = streamlit.text_input ("Gemini API Key", type="password")
-  globals()["google_maps_api_key"] = streamlit.text_input ("Google Maps API Key", type="password")
-
-  globals()["genAIClient"] = genai.Client(api_key=gemini_api_key)
+# with streamlit.sidebar:
+#   globals()["gemini_api_key"] = streamlit.text_input ("Gemini API Key", type="password")
+#   globals()["google_maps_api_key"] = streamlit.text_input ("Google Maps API Key", type="password")
+# 
+#   globals()["genAIClient"] = genai.Client(api_key=gemini_api_key)
 
 def loadTravelDatesFrame():
   with datesFrame:
@@ -58,6 +58,8 @@ class City(pydantic.BaseModel):
 
 def loadTop10Cities():
   global destination, start_date, end_date, destinationColumn1
+
+  genAIClient = streamlit.session_state["genAIClient"]
 
   travel_interests_str=" and ".join(streamlit.session_state["travel_interests"])
 
@@ -118,7 +120,8 @@ def loadDestinationColumn1():
 
 
 def getCurrentLocation():
-  global google_maps_api_key
+  # global google_maps_api_key
+  google_maps_api_key = streamlit.session_state["google_maps_api_key"]
 
   # get location in latitude and longitude format
   google_maps_api_url= f"https://www.googleapis.com/geolocation/v1/geolocate?key={google_maps_api_key}"
@@ -153,7 +156,9 @@ def getCurrentLocation():
         print("Failed to get current location:", location_response.status_code)
 
 def loadCurrentLocationMap():
-  global current_city_name, current_country_name, google_maps_api_key
+  global current_city_name, current_country_name
+
+  google_maps_api_key=streamlit.session_state["google_maps_api_key"]
 
   google_maps_api_url = f"https://maps.googleapis.com/maps/api/staticmap?"
   current_location=urllib.parse.quote_plus(f"{current_city_name},{current_country_name}")  # URL encode the current location
@@ -175,7 +180,9 @@ def loadCurrentLocationMap():
 
 
 def loadDestinationMap():
-  global google_maps_api_key, destination
+  global destination
+
+  google_maps_api_key = streamlit.session_state["google_maps_api_key"]
 
   google_maps_api_url = f"https://maps.googleapis.com/maps/api/staticmap?"
   urle_destination=urllib.parse.quote_plus(streamlit.session_state["destination"])  # URL encode the destination
@@ -197,7 +204,9 @@ def loadDestinationMap():
     print("Failed to generate map for Destination:", map_response.status_code)
 
 def loadMapSelectedCities():
-  global top10cities, google_maps_api_key, destination
+  global top10cities, destination
+
+  google_maps_api_key = streamlit.session_state["google_maps_api_key"]
 
   # cities_list = [citiesListBox.get(i) for i in citiesListBox.curselection()]
   globals()["selected_cities_list"]=[]
@@ -232,6 +241,8 @@ def loadMapSelectedCities():
 
 def loadAddCityList():
   # global destination, start_date, end_date, destinationColumn1
+
+  genAIClient = streamlit.session_state["genAIClient"]
 
   if streamlit.session_state["search_city"]:
     search_city=streamlit.session_state["search_city"]
@@ -302,6 +313,7 @@ def loadDestinationColumn2():
 
 
 def describeDestination():
+  genAIClient = streamlit.session_state["genAIClient"]
   destination=streamlit.session_state["destination"]
 
   if "destination_description" not in streamlit.session_state:
@@ -321,6 +333,7 @@ def describeDestination():
 
 
 def describeSelectedCities():
+  genAIClient = streamlit.session_state["genAIClient"]
   selected_cities=streamlit.session_state["selected_cities"]
 
   for city_entry in selected_cities:
@@ -366,5 +379,18 @@ def loadDestinationDetailsFrame():
 streamlit.title("AITinerary")
 streamlit.set_page_config(page_title="AITinerary", layout="wide")
 
-loadTravelDetailsFrame()
-loadDestinationDetailsFrame()
+@streamlit.dialog("Enter Keys")
+def enter_keys():
+  globals()["gemini_api_key"] = streamlit.text_input ("Gemini API Key", type="password")
+  globals()["google_maps_api_key"] = streamlit.text_input ("Google Maps API Key", type="password")
+  if streamlit.button("Submit"):
+    streamlit.session_state["gemini_api_key"] = gemini_api_key
+    streamlit.session_state["google_maps_api_key"] = google_maps_api_key
+    streamlit.session_state["genAIClient"] = genai.Client(api_key=gemini_api_key)
+    streamlit.rerun()
+
+if "gemini_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
+  enter_keys()
+else:
+  loadTravelDetailsFrame()
+  loadDestinationDetailsFrame()
