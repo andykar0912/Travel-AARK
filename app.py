@@ -107,6 +107,7 @@ def getCurrentLocation():
 
   # get location in latitude and longitude format
   google_maps_api_url= f"https://www.googleapis.com/geolocation/v1/geolocate?key={google_maps_api_key}"
+  
   location_response = requests.post(google_maps_api_url)
 
   if location_response.status_code == 200:
@@ -250,6 +251,7 @@ def addCityToList():
 
     new_city_rank=len(streamlit.session_state["top10cities"])+1
     streamlit.session_state["top10cities"].append({'rank': new_city_rank, 'city': search_city_entry['city'], 'country': search_city_entry['country'], 'interests': search_city_entry['interests']})
+    streamlit.session_state["selected_cities"].append(f"{new_city_rank}. {search_city_entry['city']}, {search_city_entry['country']}")
 
 def loadDestinationColumn2():
   streamlit.session_state["travel_interests"]=streamlit.multiselect("Choose interests: ", ["Kids", "Beach", "Skiing", "History", "Romance", "Party"])
@@ -268,6 +270,31 @@ def loadDestinationColumn2():
     if streamlit.button("Add Selected City to List"):
       addCityToList()
 
+
+def describeSelectedCities():
+  selected_cities=streamlit.session_state["selected_cities"]
+
+  for city_entry in selected_cities:
+    city_entry_num = city_entry.split('.')[0]
+    city_name=streamlit.session_state["top10cities"][int(city_entry_num)-1]['city']
+    country_name=streamlit.session_state["top10cities"][int(city_entry_num)-1]['country']
+
+    if 'city_description' not in streamlit.session_state["top10cities"][int(city_entry_num)-1]:
+    
+      describe_city_query=f"Describe places to visit and things to do in {city_name},{country_name} with respect to tourism under 5 sentences"
+      print(f"GenAI Describe City Query: {describe_city_query}")
+
+      describe_city_response = genAIClient.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=describe_city_query
+      )
+    
+      print(f"Describe ({city_name},{country_name}): {describe_city_response.text}")
+      streamlit.session_state["top10cities"][int(city_entry_num)-1]['city_description'] = describe_city_response.text
+
+    city_description = streamlit.session_state["top10cities"][int(city_entry_num)-1]['city_description']
+    streamlit.success(f"{city_entry_num}. {city_name},{country_name} - {city_description}")
+
 def loadDestinationDetailsFrame():
   streamlit.header("Destination Details")
 
@@ -282,9 +309,11 @@ def loadDestinationDetailsFrame():
   if "selected_cities" in streamlit.session_state and streamlit.session_state["selected_cities"] != []:
     loadMapSelectedCities()
     streamlit.image("selected_cities_map.png")
+    describeSelectedCities()
   elif "top10cities" in streamlit.session_state or "destination" in streamlit.session_state:
     loadDestinationMap()
     streamlit.image("destination_map.png")
+    # describeDestination()
   else:
     getCurrentLocation()
     loadCurrentLocationMap()
@@ -297,5 +326,7 @@ def loadDestinationDetailsFrame():
   #  globals()["travel_interests"]=streamlit.multiselect("Choose interests: ", ["Kids", "Beach", "Skiing", "History", "Romance", "Party"])
 
 streamlit.title("AITinerary")
+streamlit.set_page_config(page_title="AITinerary", layout="wide")
+
 loadTravelDetailsFrame()
 loadDestinationDetailsFrame()
