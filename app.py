@@ -7,9 +7,61 @@ import pydantic
 import requests
 import urllib.parse
 from streamlit_js_eval import get_geolocation
+import datetime
+
+class Holiday(pydantic.BaseModel):
+    holiday_start_date: str
+    holiday_end_date: str
+    reason: str
+
+def loadHolidays():
+  print("loadHolidays()")
+
+  current_city = streamlit.session_state["current_city_name"]
+  current_country = streamlit.session_state["current_country_name"]
+  current_location = f"{current_city} ({current_country})"
+  
+  genAIClient = streamlit.session_state["genAIClient"]
+
+  current_date=datetime.date.today()
+  streamlit.subheader(f"Check upcoming Holidays in {current_location}")  
+
+  month_slider=streamlit.slider("Choose number of months",
+    min_value=2,
+    max_value=12,
+    value=6)
+  
+  last_date=current_date+datetime.timedelta(days=30*month_slider)
+  print(f"Current date: {current_date}")
+  print(f"Date after {month_slider} months: {last_date}")
+  
+  location_holiday_query=f"Between {current_date} and {last_date}"
+  location_holiday_query=f"{location_holiday_query} list the first weekend of the period"
+  location_holiday_query=f"{location_holiday_query} and long weekends and vacations in {current_location}"
+  print(f"loadHolidays() -> GenAI Query: {location_holiday_query}")
+
+  location_holiday_response = genAIClient.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=location_holiday_query,
+    config={
+    	"response_mime_type": "application/json",
+      "response_schema": list[Holiday]
+    }
+  )
+    
+  holidays_list = json.loads(location_holiday_response.text)
+  print(f"loadHolidays() -> List next Holidays (in {month_slider} months) response: {holidays_list}")
+
+  streamlit.session_state["holidays_list"]=holidays_list
+
+  streamlit.write(f"Following are vacations in the next {month_slider} months:")
+  for holiday_entry in holidays_list:
+    streamlit.success(f"{holiday_entry['reason']}: from {holiday_entry['holiday_start_date']} to {holiday_entry['holiday_end_date']}")
 
 def loadTravelDatesFrame():
   with streamlit.session_state["datesFrame"]:
+    
+
     print("loadTravelDatesFrame()")
   
     streamlit.subheader("Dates")
@@ -92,6 +144,9 @@ def loadTravelDetailsFrame():
   loadTravelDatesFrame()
   loadPassengersFrame()
   loadCostsFrame()
+
+  loadHolidays()
+
 
 class City(pydantic.BaseModel):
     rank: str
@@ -409,7 +464,7 @@ else:
   current_city=streamlit.session_state["current_city_name"]
   current_country=streamlit.session_state["current_country_name"]
   current_location=f"{current_city}, {current_country}"
-  streamlit.write(f"Current Location: {current_location}")
+  streamlit.subheader(f"Current Location: {current_location}")
 
   streamlit.session_state["travelDetails"], streamlit.session_state["destinationDetails"], streamlit.session_state["detailedTravelPlan"] = streamlit.tabs(["Travel Details", "Destination Details", "Detailed Travel Plan"])
   with streamlit.session_state["travelDetails"]:
