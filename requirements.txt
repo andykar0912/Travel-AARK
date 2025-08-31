@@ -1,2 +1,5 @@
 streamlit
 openai
+google-genai
+pydantic
+streamlit-js-eval
