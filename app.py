@@ -22,14 +22,9 @@ def loadHolidays():
   current_location = f"{current_city} ({current_country})"
   
   genAIClient = streamlit.session_state["genAIClient"]
+  month_slider = streamlit.session_state["month_slider"]
 
   current_date=datetime.date.today()
-  streamlit.subheader(f"Check upcoming Holidays in {current_location}")  
-
-  month_slider=streamlit.slider("Choose number of months",
-    min_value=2,
-    max_value=12,
-    value=6)
   
   last_date=current_date+datetime.timedelta(days=30*month_slider)
   print(f"Current date: {current_date}")
@@ -44,7 +39,7 @@ def loadHolidays():
     model="gemini-2.5-flash",
     contents=location_holiday_query,
     config={
-    	"response_mime_type": "application/json",
+  	  "response_mime_type": "application/json",
       "response_schema": list[Holiday]
     }
   )
@@ -54,8 +49,28 @@ def loadHolidays():
 
   streamlit.session_state["holidays_list"]=holidays_list
 
+def loadHolidaySlider():
+  current_city = streamlit.session_state["current_city_name"]
+  current_country = streamlit.session_state["current_country_name"]
+  current_location = f"{current_city} ({current_country})"
+  
+  genAIClient = streamlit.session_state["genAIClient"]
+
+  streamlit.subheader(f"Check upcoming Holidays in {current_location}")  
+
+  month_slider=streamlit.slider("Choose number of months",
+    min_value=2,
+    max_value=12,
+    value=6,
+    on_change=loadHolidays)
+  
+  streamlit.session_state["month_slider"] = month_slider
+  
+  if "holidays_list" not in streamlit.session_state:
+    loadHolidays()
+
   streamlit.write(f"Following are vacations in the next {month_slider} months:")
-  for holiday_entry in holidays_list:
+  for holiday_entry in streamlit.session_state["holidays_list"]:
     streamlit.success(f"{holiday_entry['reason']}: from {holiday_entry['holiday_start_date']} to {holiday_entry['holiday_end_date']}")
 
 def loadTravelDatesFrame():
@@ -145,7 +160,7 @@ def loadTravelDetailsFrame():
   loadPassengersFrame()
   loadCostsFrame()
 
-  loadHolidays()
+  loadHolidaySlider()
 
 
 class City(pydantic.BaseModel):
@@ -206,18 +221,6 @@ def loadDestinationColumn1():
     for city_entry in streamlit.session_state["top10cities"]:
       top10cities_list.append(f"{city_entry['rank']}. {city_entry['city']}, {city_entry['country']}")
     streamlit.session_state["selected_cities"]=streamlit.multiselect("Top Cities to visit: ", top10cities_list)
-
-  if "selected_cities" in streamlit.session_state and streamlit.session_state["selected_cities"] != []:
-    loadMapSelectedCities()
-    streamlit.image("selected_cities_map.png")
-    
-  elif "top10cities" in streamlit.session_state or "destination" in streamlit.session_state:
-    loadDestinationMap()
-    streamlit.image("destination_map.png")
-    
-  else:
-    loadCurrentLocationMap()
-    streamlit.image("current_location_map.png")
 
 
 def loadCurrentLocationMap():
@@ -428,7 +431,7 @@ def loadDestinationDetailsFrame():
   print("loadDestinationDetailsFrame()")
   streamlit.header("Destination Details")
 
-  streamlit.session_state["destinationColumn1"], streamlit.session_state["destinationColumn2"] = streamlit.columns(2)
+  streamlit.session_state["destinationColumn1"], streamlit.session_state["destinationColumn2"], streamlit.session_state["mapColumn"] = streamlit.columns(3)
 
   with streamlit.session_state["destinationColumn1"]:
     loadDestinationColumn1()
@@ -436,6 +439,18 @@ def loadDestinationDetailsFrame():
   with streamlit.session_state["destinationColumn2"]:
     loadDestinationColumn2()
 
+  with streamlit.session_state["mapColumn"]:
+    if "selected_cities" in streamlit.session_state and streamlit.session_state["selected_cities"] != []:
+      loadMapSelectedCities()
+      streamlit.image("selected_cities_map.png")
+    
+    elif "top10cities" in streamlit.session_state or "destination" in streamlit.session_state:
+      loadDestinationMap()
+      streamlit.image("destination_map.png")
+    
+    else:
+      loadCurrentLocationMap()
+      streamlit.image("current_location_map.png")
   
 
   # with destinationFrame:
