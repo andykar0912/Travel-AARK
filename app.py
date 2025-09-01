@@ -71,7 +71,8 @@ def loadHolidaySlider():
 
   streamlit.write(f"Following are vacations in the next {month_slider} months:")
   for holiday_entry in streamlit.session_state["holidays_list"]:
-    streamlit.success(f"{holiday_entry['reason']}: from {holiday_entry['holiday_start_date']} to {holiday_entry['holiday_end_date']}")
+    # streamlit.success(f"{holiday_entry['reason']}: from {holiday_entry['holiday_start_date']} to {holiday_entry['holiday_end_date']}")
+    streamlit.success(f"{holiday_entry['holiday_start_date']} to {holiday_entry['holiday_end_date']}: {holiday_entry['reason']}")
 
 def loadTravelDatesFrame():
   with streamlit.session_state["datesFrame"]:
@@ -210,6 +211,8 @@ def loadDestinationColumn1():
 
   destination=streamlit.text_input("Destination (city / country / region): ")
 
+  streamlit.session_state["travel_interests"]=streamlit.multiselect("Choose interests: ", ["Kids", "Beach", "Skiing", "History", "Romance", "Party"])
+
   if streamlit.button("Load Cities to Visit"):
     streamlit.session_state["destination"]=destination
     loadTop10Cities()
@@ -221,6 +224,19 @@ def loadDestinationColumn1():
     for city_entry in streamlit.session_state["top10cities"]:
       top10cities_list.append(f"{city_entry['rank']}. {city_entry['city']}, {city_entry['country']}")
     streamlit.session_state["selected_cities"]=streamlit.multiselect("Top Cities to visit: ", top10cities_list)
+
+  streamlit.session_state["search_city"]=streamlit.text_input("Search additional cities: ")
+  if streamlit.button("Search city"):
+    loadAddCityList()
+
+  if "search_cities" in streamlit.session_state:
+    search_cities_list=[]
+    for city_entry in streamlit.session_state["search_cities"]:
+      search_cities_list.append(f"{city_entry['rank']}. {city_entry['city']}, {city_entry['country']}")
+    streamlit.session_state["selected_search_cities"]=streamlit.multiselect("Select Cities to add: ", search_cities_list)
+
+    if streamlit.button("Add Selected City to List"):
+      addCityToList()
 
 
 def loadCurrentLocationMap():
@@ -355,27 +371,16 @@ def addCityToList():
 def loadDestinationColumn2():
   print("loadDestinationColumn2()")
 
-  streamlit.session_state["travel_interests"]=streamlit.multiselect("Choose interests: ", ["Kids", "Beach", "Skiing", "History", "Romance", "Party"])
-  streamlit.session_state["search_city"]=streamlit.text_input("Search additional cities: ")
-
-  if streamlit.button("Search city"):
-    loadAddCityList()
-
-  if "search_cities" in streamlit.session_state:
-    search_cities_list=[]
-    for city_entry in streamlit.session_state["search_cities"]:
-      search_cities_list.append(f"{city_entry['rank']}. {city_entry['city']}, {city_entry['country']}")
-    streamlit.session_state["selected_search_cities"]=streamlit.multiselect("Select Cities to add: ", search_cities_list)
-
-    if streamlit.button("Add Selected City to List"):
-      addCityToList()
-
   if "selected_cities" in streamlit.session_state and streamlit.session_state["selected_cities"] != []:
     describeSelectedCities()
   elif "top10cities" in streamlit.session_state or "destination" in streamlit.session_state:
     describeDestination()
   else:
-    print("loadDestinationColumn2() -> No description of current location")
+    print("loadDestinationColumn2() -> Print current location")
+    current_city = streamlit.session_state["current_city_name"]
+    current_country = streamlit.session_state["current_country_name"]
+    current_location = f"{current_city} ({current_country})"
+    streamlit.success(f"Current Location: {current_location}")
 
 
 def describeDestination():
