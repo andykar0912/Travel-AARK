@@ -517,7 +517,12 @@ def generateDetailedTravelPlan():
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} starting on {start_date} at {current_city}, {current_country}"
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} ending on {end_date} at {current_city}, {current_country}"
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} including the recommended number of stays at each city"
-  detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} travelling with {adult_count} adults, {children_count} children and {senior_count} seniors"
+  detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} for {adult_count} adults travelling"
+ 
+  if int(children_count) > 0:
+    detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} with {children_count} children"
+  if int(senior_count) > 0:
+    detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} with {senior_count} seniors"
 
   detailed_travel_itinerary_response = openAIClient.responses.parse(
     model="gpt-5",
