@@ -1,7 +1,8 @@
 #%%writefile app.py
 
 import streamlit
-from google import genai
+# from google import genai
+from openai import OpenAI
 import json
 import pydantic
 import requests
@@ -12,9 +13,12 @@ import enum
 import pandas
 
 class Holiday(pydantic.BaseModel):
-    holiday_start_date: str
-    holiday_end_date: str
-    reason: str
+  holiday_start_date: str
+  holiday_end_date: str
+  reason: str
+
+class HolidayList(pydantic.BaseModel):
+  holiday_list: list[Holiday]
 
 def loadHolidays():
   print("loadHolidays()")
@@ -23,7 +27,7 @@ def loadHolidays():
   current_country = streamlit.session_state["current_country_name"]
   current_location = f"{current_city} ({current_country})"
   
-  genAIClient = streamlit.session_state["genAIClient"]
+  openAIClient = streamlit.session_state["openAIClient"]
   month_slider = streamlit.session_state["month_slider"]
 
   current_date=datetime.date.today()
@@ -37,16 +41,14 @@ def loadHolidays():
   location_holiday_query=f"{location_holiday_query} and long weekends and vacations in {current_location}"
   print(f"loadHolidays() -> GenAI Query: {location_holiday_query}")
 
-  location_holiday_response = genAIClient.models.generate_content(
-    model="gemini-2.5-flash",
-    contents=location_holiday_query,
-    config={
-  	  "response_mime_type": "application/json",
-      "response_schema": list[Holiday]
-    }
+  location_holiday_response = openAIClient.responses.parse(
+    model="gpt-5",
+    input=location_holiday_query,
+    text_format=HolidayList
   )
-    
-  holidays_list = json.loads(location_holiday_response.text)
+  
+  location_holiday_response_json=json.loads(location_holiday_response.model_dump_json(indent=2))
+  holidays_list = location_holiday_response_json["output"][1]["content"][0]["parsed"]["holiday_list"]
   print(f"loadHolidays() -> List next Holidays (in {month_slider} months) response: {holidays_list}")
 
   streamlit.session_state["holidays_list"]=holidays_list
@@ -56,7 +58,7 @@ def loadHolidaySlider():
   current_country = streamlit.session_state["current_country_name"]
   current_location = f"{current_city} ({current_country})"
   
-  genAIClient = streamlit.session_state["genAIClient"]
+  # openAIClient = streamlit.session_state["openAIClient"]
 
   streamlit.subheader(f"Check upcoming Holidays in {current_location}")  
 
@@ -172,6 +174,9 @@ class City(pydantic.BaseModel):
     country: str
     interests: list[str]
 
+class CityList(pydantic.BaseModel):
+    city_list: list[City]
+
 def loadTop10Cities():
   print("loadTop10Cities()")
   # global destination, start_date, end_date, destinationColumn1
@@ -180,7 +185,7 @@ def loadTop10Cities():
   end_date = streamlit.session_state["endDate"]
   # destinationColumn1 = streamlit.session_state["destinationColumn1"]
 
-  genAIClient = streamlit.session_state["genAIClient"]
+  openAIClient = streamlit.session_state["openAIClient"]
 
   travel_interests_str=" and ".join(streamlit.session_state["travel_interests"])
 
@@ -190,16 +195,14 @@ def loadTop10Cities():
     top10cities_query=f"{top10cities_query} during the period between {start_date} and {end_date}"
     print(f"loadTop10Cities() -> GenAI Query: {top10cities_query}")
 
-    top10cities_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=top10cities_query,
-      config={
-    	  "response_mime_type": "application/json",
-        "response_schema": list[City]
-      }
+    top10cities_response = openAIClient.responses.parse(
+      model="gpt-5",
+      input=top10cities_query,
+      text_format=CityList
     )
     
-    top10cities = json.loads(top10cities_response.text)
+    top10cities_response_json=json.loads(top10cities_response.model_dump_json(indent=2))
+    top10cities = top10cities_response_json["output"][1]["content"][0]["parsed"]["city_list"]
     print(f"loadTop10Cities() -> Top 10 cities response: {top10cities}")
 
     streamlit.session_state["top10cities"]=top10cities
@@ -332,7 +335,7 @@ def loadAddCityList():
   # global destination, start_date, end_date, destinationColumn1
   print("loadAddCityList()")
 
-  genAIClient = streamlit.session_state["genAIClient"]
+  openAIClient = streamlit.session_state["openAIClient"]
 
   if streamlit.session_state["search_city"]:
     search_city=streamlit.session_state["search_city"]
@@ -340,16 +343,14 @@ def loadAddCityList():
     search_city_query=f"Find cities with the name {search_city} near {destination}"
     print(f"loadAddCityList() -> GenAI Search Query: {search_city_query}")
 
-    search_city_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=search_city_query,
-      config={
-    	  "response_mime_type": "application/json",
-        "response_schema": list[City]
-      }
+    search_city_response = openAIClient.responses.parse(
+      model="gpt-5",
+      input=search_city_query,
+      text_format=CityList
     )
-    
-    search_cities = json.loads(search_city_response.text)
+
+    search_city_response_json=json.loads(search_city_response.model_dump_json(indent=2))
+    search_cities = search_city_response_json["output"][1]["content"][0]["parsed"]["city_list"]
     print(f"loadAddCityList() -> Search cities response: {search_cities}")
     streamlit.session_state["search_cities"] = search_cities
 
@@ -388,20 +389,23 @@ def loadDestinationColumn2():
 def describeDestination():
   print("describeDestination()")
 
-  genAIClient = streamlit.session_state["genAIClient"]
+  openAIClient = streamlit.session_state["openAIClient"]
   destination=streamlit.session_state["destination"]
 
   if "destination_description" not in streamlit.session_state:
     describe_destination_query=f"Describe places to visit and things to do in {destination} with respect to tourism under 5 sentences"
     print(f"GenAI Describe City Query: {describe_destination_query}")
 
-    describe_destination_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=describe_destination_query
+    describe_destination_response = openAIClient.responses.parse(
+      model="gpt-5",
+      input=describe_destination_query
     )
-    
-    print(f"describeDestination() -> Describe ({destination}): {describe_destination_response.text}")
-    streamlit.session_state["destination_description"] = describe_destination_response.text
+
+    describe_destination_response_json = json.loads(describe_destination_response.model_dump_json(indent=2))
+    describe_destination = describe_destination_response_json["output"][1]["content"][0]["text"]
+
+    print(f"describeDestination() -> Describe ({destination}): {describe_destination}")
+    streamlit.session_state["destination_description"] = describe_destination
 
   destination_desc=streamlit.session_state["destination_description"]
   streamlit.success(f"{destination} - {destination_desc}")
@@ -410,7 +414,7 @@ def describeDestination():
 def describeSelectedCities():
   print("describeSelectedCities()")
 
-  genAIClient = streamlit.session_state["genAIClient"]
+  openAIClient = streamlit.session_state["openAIClient"]
   selected_cities=streamlit.session_state["selected_cities"]
 
   for city_entry in selected_cities:
@@ -423,13 +427,16 @@ def describeSelectedCities():
       describe_city_query=f"Describe places to visit and things to do in {city_name},{country_name} with respect to tourism under 5 sentences"
       print(f"describeSelectedCities() -> GenAI Describe City Query: {describe_city_query}")
 
-      describe_city_response = genAIClient.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=describe_city_query
+      describe_city_response = openAIClient.responses.parse(
+        model="gpt-5",
+        input=describe_city_query
       )
     
-      print(f"describeSelectedCities() -> Describe ({city_name},{country_name}): {describe_city_response.text}")
-      streamlit.session_state["top10cities"][int(city_entry_num)-1]['city_description'] = describe_city_response.text
+      describe_city_response_json = json.loads(describe_city_response.model_dump_json(indent=2))
+      describe_city = describe_city_response_json["output"][1]["content"][0]["text"]
+
+      print(f"describeSelectedCities() -> Describe ({city_name},{country_name}): {describe_city}")
+      streamlit.session_state["top10cities"][int(city_entry_num)-1]['city_description'] = describe_city
 
     city_description = streamlit.session_state["top10cities"][int(city_entry_num)-1]['city_description']
     streamlit.success(f"{city_entry_num}. {city_name},{country_name} - {city_description}")
@@ -480,6 +487,9 @@ class TravelPlan(pydantic.BaseModel):
     end_time: str
     travel_time: str
 
+class TravelPlanList(pydantic.BaseModel):
+    travel_plan_list: list[TravelPlan]
+
 
 def generateDetailedTravelPlan():
   print("generateDetailedTravelPlan()")
@@ -495,7 +505,7 @@ def generateDetailedTravelPlan():
 
   print("generateDetailedTravelPlan() -> Selected cities for travel plan: ", selected_cities_list)
 
-  genAIClient = streamlit.session_state["genAIClient"]
+  openAIClient = streamlit.session_state["openAIClient"]
 
   if streamlit.session_state["travelCosts"] == "Budget":
     detailed_travel_itinerary_query=f"Create a travel plan for {selected_cities_list} with least costs"
@@ -507,16 +517,24 @@ def generateDetailedTravelPlan():
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} starting on {start_date} at {current_city}, {current_country}"
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} ending on {end_date} at {current_city}, {current_country}"
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} including the recommended number of stays at each city"
-  detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} travelling with {adult_count} adults, {children_count} children and {senior_count} seniors"
-  detailed_travel_itinerary_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=detailed_travel_itinerary_query,
-      config={
-        "response_mime_type": "application/json",
-          "response_schema": list[TravelPlan]
-      }
+  detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} for {adult_count} adults travelling"
+ 
+  if children_count != "" and int(children_count) > 0:
+    detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} with {children_count} children"
+  if senior_count != "" and int(senior_count) > 0:
+    detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} with {senior_count} seniors"
+
+  print("generateDetailedTravelPlan() -> GenAI Detailed Travel Itinerary Query: ", detailed_travel_itinerary_query)
+
+  detailed_travel_itinerary_response = openAIClient.responses.parse(
+    model="gpt-5",
+    input=detailed_travel_itinerary_query,
+    text_format=TravelPlanList
   )
-  detailed_travel_itinerary = json.loads(detailed_travel_itinerary_response.text)
+
+  detailed_travel_itinerary_response_json = json.loads(detailed_travel_itinerary_response.model_dump_json(indent=2))
+  detailed_travel_itinerary = detailed_travel_itinerary_response_json["output"][1]["content"][0]["parsed"]["travel_plan_list"]
+
   print("generateDetailedTravelPlan() -> Detailed Travel Itinerary response:", detailed_travel_itinerary)
   streamlit.session_state["detailed_travel_itinerary"] = detailed_travel_itinerary
 
@@ -609,15 +627,15 @@ streamlit.set_page_config(page_title="AITinerary", layout="wide")
 
 @streamlit.dialog("Enter Keys")
 def enter_keys():
-  gemini_api_key = streamlit.text_input ("Gemini API Key", type="password")
+  openai_api_key = streamlit.text_input ("OpenAI API Key", type="password")
   google_maps_api_key = streamlit.text_input ("Google Maps API Key", type="password")
   if streamlit.button("Submit"):
-    streamlit.session_state["gemini_api_key"] = gemini_api_key
+    streamlit.session_state["openai_api_key"] = openai_api_key
     streamlit.session_state["google_maps_api_key"] = google_maps_api_key
-    streamlit.session_state["genAIClient"] = genai.Client(api_key=gemini_api_key)
+    streamlit.session_state["openAIClient"] = OpenAI(api_key=openai_api_key)
     streamlit.rerun()
 
-if "gemini_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
+if "openai_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
   enter_keys()
 else:
   getCurrentLocation()
