@@ -550,8 +550,49 @@ def loadTravelPlanTableFrame():
     loadTravelPlanTable()
 
 
+def loadTravelMap():
+  if streamlit.session_state["df_select_event"].selection["rows"] != []:
+    print("loadTravelMapframe()")
+
+    selected_row_index = streamlit.session_state["df_select_event"].selection["rows"][0]
+    selected_row = []
+    selected_row.append(streamlit.session_state["detailed_travel_itinerary"][selected_row_index])
+    print("loadTravelMapframe() -> Selected Row: ", selected_row)
+
+    start_city = f"{selected_row[0]['start_city']}, {selected_row[0]['start_country']}"
+    end_city = f"{selected_row[0]['end_city']}, {selected_row[0]['end_country']}"
+    urlencoded_start_city=urllib.parse.quote_plus(f"{start_city}")
+    urlencoded_end_city=urllib.parse.quote_plus(f"{end_city}")
+
+    map_markers_str= f"markers=color:red%7Clabel:A%7C{urlencoded_start_city}&markers=color:red%7Clabel:B%7C{urlencoded_end_city}"
+    map_path_str= f"path=color:blue%7Cweight:5%7C{urlencoded_start_city}%7C{urlencoded_end_city}"
+
+    google_maps_api_key = streamlit.session_state["google_maps_api_key"]
+    google_maps_api_url = f"https://maps.googleapis.com/maps/api/staticmap?{map_markers_str}&{map_path_str}&size=600x600&key={google_maps_api_key}"
+
+    print(f"loadTravelMapframe() -> Google Maps API URL for travel day {selected_row_index}:", google_maps_api_url)
+
+    mapImageFile=open('travel_day_map.png', 'wb')
+    map_response=requests.get(google_maps_api_url)
+    if map_response.status_code == 200:
+      mapImageFile.write(map_response.content)
+      mapImageFile.close()
+      print("loadTravelMapframe() -> Map for Current location generated successfully!")
+    else:
+      print("loadTravelMapframe() -> Failed to generate map for current location:", map_response.status_code)
+
+    streamlit.image("travel_day_map.png")
+
+
+def loadTravelMapframe():
+  with streamlit.session_state["travelMapFrame"]:
+    loadTravelMap()
+
+
 def loadTravelCostFrame():
   if streamlit.session_state["df_select_event"].selection["rows"] != []:
+    print("loadTravelCostFrame()")
+
     selected_row_index = streamlit.session_state["df_select_event"].selection["rows"][0]
     selected_row = []
     selected_row.append(streamlit.session_state["detailed_travel_itinerary"][selected_row_index])
@@ -594,7 +635,7 @@ def loadDetailedTravelPlanFrame():
     streamlit.session_state["travelPlanTableFrame"], streamlit.session_state["travelMapFrame"] = streamlit.columns(2)
 
     loadTravelPlanTableFrame()
-    # loadTravelMapframe()
+    loadTravelMapframe()
 
     loadTravelCostFrame()
     
