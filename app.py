@@ -474,6 +474,7 @@ class TravelPlan(pydantic.BaseModel):
     end_city: str
     end_country: str
     transport_mode: transportation
+    transport_number: str
     transport_company: str
     transport_cost: str
     start_time: str
@@ -559,12 +560,13 @@ def loadTravelCostFrame():
     df_column_config = {
       "transport_mode": "Mode of Transport",
       "transport_company": "Tranport Provider Company",
+      "transport_number": "Transport Number",
       "transport_cost": "Transport Cost",
       "start_time": "Time of Departure",
       "end_time": "Time of Arrival",
       "travel_time": "Travel Duration"
     }
-    df_column_order = ["transport_mode", "transport_company", "transport_cost", "start_time", "end_time", "travel_time"]
+    df_column_order = ["transport_mode", "transport_company", "transport_number", "transport_cost", "start_time", "end_time", "travel_time"]
 
     streamlit.session_state["df_travel_cost_event"] = streamlit.dataframe(
       selected_row,
