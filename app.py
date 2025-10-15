@@ -185,7 +185,7 @@ def loadTop10Cities():
   travel_interests_str=" and ".join(streamlit.session_state["travel_interests"])
 
   if destination:
-    top10cities_query=f"List the top 10 cities for tourism in {destination}"
+    top10cities_query=f"List the top 10 cities for tourism in and around {destination}"
     top10cities_query=f"{top10cities_query} for {travel_interests_str}"
     top10cities_query=f"{top10cities_query} during the period between {start_date} and {end_date}"
     print(f"loadTop10Cities() -> GenAI Query: {top10cities_query}")
@@ -211,7 +211,13 @@ def loadDestinationColumn1():
   # global top10cities
   print("loadDestinationColumn1()")
 
-  destination=streamlit.text_input("Destination (city / country / region): ")
+  if "destination" in streamlit.session_state:
+    destination=streamlit.text_input(
+      label="Destination (city / country / region): ",
+      value=streamlit.session_state["destination"]
+    )
+  else:
+    destination=streamlit.text_input(label="Destination (city / country / region): ")
 
   streamlit.session_state["travel_interests"]=streamlit.multiselect("Choose interests: ", ["Kids", "Beach", "Skiing", "History", "Romance", "Party"])
 
@@ -373,6 +379,47 @@ def addCityToList():
 def loadDestinationColumn2():
   print("loadDestinationColumn2()")
 
+  if streamlit.button("Load Top 10 Destination Recommendations"):
+    current_city_name = streamlit.session_state["current_city_name"]
+    current_country_name = streamlit.session_state["current_country_name"]
+    current_city = f"{current_city_name}, {current_country_name}"
+
+    start_date = streamlit.session_state["startDate"]
+    end_date = streamlit.session_state["endDate"]
+
+    top10destinations_query = f"List the top 10 destinations over the world"
+    top10destinations_query = f"{top10destinations_query} recommended for tourists from {current_city}"
+    top10destinations_query = f"{top10destinations_query} travelling during the period from {start_date} to {end_date}"
+    top10destinations_query = f"{top10destinations_query} including names of region of the world"
+
+    print("loadDestinationColumn2() -> GenAI query for Top 10 recommended destination: ", top10destinations_query)
+    genAIClient = streamlit.session_state["genAIClient"]
+
+    top10destination_query_response = genAIClient.models.generate_content(
+      model="gemini-2.5-flash",
+      contents=top10destinations_query,
+      config={
+    	  "response_mime_type": "application/json",
+        "response_schema": list[str]
+      }
+    )
+    
+    recommended_destinations = json.loads(top10destination_query_response.text)
+    streamlit.session_state["recommended_destinations"] = recommended_destinations
+    print(f"loadDestinationColumn2() -> Top 10 recommended destinations response: {recommended_destinations}")
+
+  if "recommended_destinations" in streamlit.session_state:
+    streamlit.session_state["recommended_destination_selected"] = streamlit.selectbox(
+      "Top 10 Recommended Destinations",
+      streamlit.session_state["recommended_destinations"],
+      index=None,
+      placeholder="Recommended Destinations"
+    )
+
+    if "recommended_destination_selected" in streamlit.session_state and streamlit.session_state["recommended_destination_selected"] is not None:
+      if streamlit.button("Choose Destination"):
+        streamlit.session_state["destination"] = streamlit.session_state["recommended_destination_selected"]
+
   if "selected_cities" in streamlit.session_state and streamlit.session_state["selected_cities"] != []:
     describeSelectedCities()
   elif "top10cities" in streamlit.session_state or "destination" in streamlit.session_state:
@@ -480,6 +527,7 @@ class TravelPlan(pydantic.BaseModel):
     start_time: str
     end_time: str
     travel_time: str
+    daytrip_or_nightstay: str
 
 
 def generateDetailedTravelPlan():
@@ -507,8 +555,12 @@ def generateDetailedTravelPlan():
 
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} starting on {start_date} at {current_city}, {current_country}"
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} ending on {end_date} at {current_city}, {current_country}"
-  detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} including the recommended number of stays at each city"
   detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} travelling with {adult_count} adults, {children_count} children and {senior_count} seniors"
+  detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} add recommendation for Daytrip or Nightstay for each city"
+  detailed_travel_itinerary_query=f"{detailed_travel_itinerary_query} and for nightstay cities, include the recommended number of nightstays"
+
+  print("generateDetailedTravelPlan() -> GenAI Query for Detailed Travel Plan: ", detailed_travel_itinerary_query)
+  
   detailed_travel_itinerary_response = genAIClient.models.generate_content(
       model="gemini-2.5-flash",
       contents=detailed_travel_itinerary_query,
@@ -530,9 +582,10 @@ def loadTravelPlanTable():
       "start_city": "Start City",
       "start_country": "Start Country",
       "end_city": "End City",
-      "end_country": "End Country"
+      "end_country": "End Country",
+      "daytrip_or_nightstay": "Daytrip / Nightstay"
     }
-  df_column_order = ["travel_date", "start_city", "start_country", "end_city", "end_country"]
+  df_column_order = ["travel_date", "start_city", "start_country", "end_city", "end_country", "daytrip_or_nightstay"]
 
   streamlit.session_state["df_select_event"] = streamlit.dataframe(
     streamlit.session_state["detailed_travel_itinerary"],
@@ -543,11 +596,47 @@ def loadTravelPlanTable():
     selection_mode="single-row"
   )
 
+
+def loadTravelPlanChange():
+  print("loadTravelPlanChange()")
+
+  travel_itinerary_change = streamlit.text_input("Please specify any changes you want to make to the Itinerary above (if any):")
+  if streamlit.button("Update Itinerary") and travel_itinerary_change is not None:
+    detailed_travel_itinerary = streamlit.session_state["detailed_travel_itinerary"]
+
+    update_travel_itinerary_query=f"Update the travel itinerary {detailed_travel_itinerary} as per the request:"
+    update_travel_itinerary_query=f"{update_travel_itinerary_query} {travel_itinerary_change}"
+
+    print("loadTravelPlanChange() -> GenAI Query for Changing Detailed Travel Plan: ", update_travel_itinerary_query)
+    genAIClient = streamlit.session_state["genAIClient"]
+    
+    update_travel_itinerary_query_response = genAIClient.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=update_travel_itinerary_query,
+        config={
+          "response_mime_type": "application/json",
+            "response_schema": list[TravelPlan]
+        }
+    )
+    detailed_travel_itinerary = json.loads(update_travel_itinerary_query_response.text)
+    print("loadTravelPlanChange() -> Updated Detailed Travel Itinerary response:", detailed_travel_itinerary)
+
+    streamlit.session_state["previous_detailed_travel_itinerary"] = streamlit.session_state["detailed_travel_itinerary"]
+    streamlit.session_state["detailed_travel_itinerary"] = detailed_travel_itinerary
+
+    streamlit.rerun()
+
+  if streamlit.button("Revert Itinerary"):
+    streamlit.session_state["detailed_travel_itinerary"] = streamlit.session_state["previous_detailed_travel_itinerary"]
+    streamlit.rerun()
+
+
 def loadTravelPlanTableFrame():
   with streamlit.session_state["travelPlanTableFrame"]:
     print("loadTravelPlanTableFrame()")
 
     loadTravelPlanTable()
+    loadTravelPlanChange()
 
 
 def loadTravelMap():
