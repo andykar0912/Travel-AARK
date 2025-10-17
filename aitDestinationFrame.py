@@ -1,14 +1,8 @@
 import streamlit
-import json
-import pydantic
 import requests
 import urllib.parse
 
-class City(pydantic.BaseModel):
-    rank: str
-    city: str
-    country: str
-    interests: list[str]
+import aitGenAIQuery
 
 def loadTop10Cities():
   print("aitDestinationFrame.py -> loadTop10Cities()")
@@ -18,8 +12,6 @@ def loadTop10Cities():
   end_date = streamlit.session_state["endDate"]
   # destinationColumn1 = streamlit.session_state["destinationColumn1"]
 
-  genAIClient = streamlit.session_state["genAIClient"]
-
   travel_interests_str=" and ".join(streamlit.session_state["travel_interests"])
 
   if destination:
@@ -28,29 +20,20 @@ def loadTop10Cities():
     top10cities_query=f"{top10cities_query} during the period between {start_date} and {end_date}"
     print(f"aitDestinationFrame.py -> loadTop10Cities() -> GenAI Query: {top10cities_query}")
 
-    top10cities_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=top10cities_query,
-      config={
-    	  "response_mime_type": "application/json",
-        "response_schema": list[City]
-      }
-    )
-    
-    top10cities = json.loads(top10cities_response.text)
+    streamlit.session_state["return_type"] = "CityList"
+    streamlit.session_state["genAIQuery"] = top10cities_query
+
+    aitGenAIQuery.executeGenAIQuery()
+    top10cities = streamlit.session_state["genAIQueryOutput"]
     print(f"aitDestinationFrame.py -> loadTop10Cities() -> Top 10 cities response: {top10cities}")
 
     streamlit.session_state["top10cities"]=top10cities
 
-    # with destinationColumn1:
-    #   selected_cities=streamlit.multiselect("Select Cities: ", top10cities)
 
 
 def loadAddCityList():
   # global destination, start_date, end_date, destinationColumn1
   print("aitDestinationFrame.py -> loadAddCityList()")
-
-  genAIClient = streamlit.session_state["genAIClient"]
 
   if streamlit.session_state["search_city"]:
     search_city=streamlit.session_state["search_city"]
@@ -58,16 +41,11 @@ def loadAddCityList():
     search_city_query=f"Find cities with the name {search_city} near {destination}"
     print(f"aitDestinationFrame.py -> loadAddCityList() -> GenAI Search Query: {search_city_query}")
 
-    search_city_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=search_city_query,
-      config={
-    	  "response_mime_type": "application/json",
-        "response_schema": list[City]
-      }
-    )
-    
-    search_cities = json.loads(search_city_response.text)
+    streamlit.session_state["return_type"] = "CityList"
+    streamlit.session_state["genAIQuery"] = search_city_query
+
+    aitGenAIQuery.executeGenAIQuery()
+    search_cities = streamlit.session_state["genAIQueryOutput"]
     print(f"aitDestinationFrame.py -> loadAddCityList() -> Search cities response: {search_cities}")
     streamlit.session_state["search_cities"] = search_cities
 
@@ -134,7 +112,6 @@ def loadDestinationColumn1():
 def describeSelectedCities():
   print("aitDestinationFrame.py -> describeSelectedCities()")
 
-  genAIClient = streamlit.session_state["genAIClient"]
   selected_cities=streamlit.session_state["selected_cities"]
 
   for city_entry in selected_cities:
@@ -147,13 +124,14 @@ def describeSelectedCities():
       describe_city_query=f"Describe places to visit and things to do in {city_name},{country_name} with respect to tourism under 5 sentences"
       print(f"aitDestinationFrame.py -> describeSelectedCities() -> GenAI Describe City Query: {describe_city_query}")
 
-      describe_city_response = genAIClient.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=describe_city_query
-      )
+      streamlit.session_state["return_type"] = None
+      streamlit.session_state["genAIQuery"] = describe_city_query
+
+      aitGenAIQuery.executeGenAIQuery()
+      describe_city_response = streamlit.session_state["genAIQueryOutput"]
     
-      print(f"aitDestinationFrame.py -> describeSelectedCities() -> Describe ({city_name},{country_name}): {describe_city_response.text}")
-      streamlit.session_state["top10cities"][int(city_entry_num)-1]['city_description'] = describe_city_response.text
+      print(f"aitDestinationFrame.py -> describeSelectedCities() -> Describe ({city_name},{country_name}): {describe_city_response}")
+      streamlit.session_state["top10cities"][int(city_entry_num)-1]['city_description'] = describe_city_response
 
     city_description = streamlit.session_state["top10cities"][int(city_entry_num)-1]['city_description']
     streamlit.success(f"{city_entry_num}. {city_name},{country_name} - {city_description}")
@@ -162,20 +140,20 @@ def describeSelectedCities():
 def describeDestination():
   print("aitDestinationFrame.py -> describeDestination()")
 
-  genAIClient = streamlit.session_state["genAIClient"]
   destination=streamlit.session_state["destination"]
 
   if "destination_description" not in streamlit.session_state:
     describe_destination_query=f"Describe places to visit and things to do in {destination} with respect to tourism under 5 sentences"
     print(f"aitDestinationFrame.py -> GenAI Describe City Query: {describe_destination_query}")
 
-    describe_destination_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=describe_destination_query
-    )
-    
-    print(f"aitDestinationFrame.py -> describeDestination() -> Describe ({destination}): {describe_destination_response.text}")
-    streamlit.session_state["destination_description"] = describe_destination_response.text
+    streamlit.session_state["return_type"] = None
+    streamlit.session_state["genAIQuery"] = describe_destination_query
+
+    aitGenAIQuery.executeGenAIQuery()
+
+    describe_destination_response = streamlit.session_state["genAIQueryOutput"]
+    print(f"aitDestinationFrame.py -> describeDestination() -> Describe ({destination}): {describe_destination_response}")
+    streamlit.session_state["destination_description"] = describe_destination_response
 
   destination_desc=streamlit.session_state["destination_description"]
   streamlit.success(f"{destination} - {destination_desc}")
@@ -199,18 +177,13 @@ def loadDestinationColumn2():
     top10destinations_query = f"{top10destinations_query} including names of region of the world"
 
     print("aitDestinationFrame.py -> loadDestinationColumn2() -> GenAI query for Top 10 recommended destination: ", top10destinations_query)
-    genAIClient = streamlit.session_state["genAIClient"]
 
-    top10destination_query_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=top10destinations_query,
-      config={
-    	  "response_mime_type": "application/json",
-        "response_schema": list[str]
-      }
-    )
+    streamlit.session_state["return_type"] = "DestNameList"
+    streamlit.session_state["genAIQuery"] = top10destinations_query
+
+    aitGenAIQuery.executeGenAIQuery()
     
-    recommended_destinations = json.loads(top10destination_query_response.text)
+    recommended_destinations = streamlit.session_state["genAIQueryOutput"]
     streamlit.session_state["recommended_destinations"] = recommended_destinations
     print(f"aitDestinationFrame.py -> loadDestinationColumn2() -> Top 10 recommended destinations response: {recommended_destinations}")
 

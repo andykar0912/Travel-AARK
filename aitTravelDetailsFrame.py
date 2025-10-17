@@ -1,13 +1,12 @@
 import streamlit
-import pydantic
 import datetime
-import json
+
+import aitGenAIQuery
 
 
 def loadTravelDatesFrame():
   with streamlit.session_state["datesFrame"]:
     
-
     print("aitTravelDetailsFrame.py -> loadTravelDatesFrame()")
   
     streamlit.subheader("Dates")
@@ -43,12 +42,6 @@ def loadCostsFrame():
     streamlit.session_state["travelCosts"] = travelCosts
 
 
-
-class Holiday(pydantic.BaseModel):
-    holiday_start_date: str
-    holiday_end_date: str
-    reason: str
-
 def loadHolidays():
   print("aitTravelDetailsFrame.py -> loadHolidays()")
 
@@ -70,18 +63,12 @@ def loadHolidays():
   location_holiday_query=f"{location_holiday_query} and long weekends and vacations in {current_location}"
   print(f"aitTravelDetailsFrame.py -> loadHolidays() -> GenAI Query: {location_holiday_query}")
 
-  location_holiday_response = genAIClient.models.generate_content(
-    model="gemini-2.5-flash",
-    contents=location_holiday_query,
-    config={
-  	  "response_mime_type": "application/json",
-      "response_schema": list[Holiday]
-    }
-  )
-    
-  holidays_list = json.loads(location_holiday_response.text)
-  print(f"aitTravelDetailsFrame.py -> loadHolidays() -> List next Holidays (in {month_slider} months) response: {holidays_list}")
+  streamlit.session_state["return_type"] = "HolidayList"
+  streamlit.session_state["genAIQuery"] = location_holiday_query
 
+  aitGenAIQuery.executeGenAIQuery()
+  holidays_list = streamlit.session_state["genAIQueryOutput"]
+  print(f"aitTravelDetailsFrame.py -> loadHolidays() -> List next Holidays (in {month_slider} months) response: {holidays_list}")
   streamlit.session_state["holidays_list"]=holidays_list
 
 
@@ -93,8 +80,6 @@ def loadHolidaySlider():
   current_country = streamlit.session_state["current_country_name"]
   current_location = f"{current_city} ({current_country})"
   
-  genAIClient = streamlit.session_state["genAIClient"]
-
   streamlit.subheader(f"Check upcoming Holidays in {current_location}")  
 
   month_slider=streamlit.slider("Choose number of months",

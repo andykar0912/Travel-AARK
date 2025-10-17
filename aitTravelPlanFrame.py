@@ -1,9 +1,8 @@
 import streamlit
-import json
 import urllib.parse
-import enum
-import pydantic
 import requests
+
+import aitGenAIQuery
 
 
 def loadTravelPlanTable():
@@ -29,29 +28,6 @@ def loadTravelPlanTable():
   )
 
 
-class transportation(str, enum.Enum):
-    BUS = "Bus"
-    TRAIN = "Train"
-    FLIGHT = "Flight"
-    CAR = "Car"
-    FERRY = "Ferry"
-
-class TravelPlan(pydantic.BaseModel):
-    travel_date: str
-    start_city: str
-    start_country: str
-    end_city: str
-    end_country: str
-    transport_mode: transportation
-    transport_number: str
-    transport_company: str
-    transport_cost: str
-    start_time: str
-    end_time: str
-    travel_time: str
-    daytrip_or_nightstay: str
-
-
 def loadTravelPlanChange():
   print("aitTravelPlanFrame.py -> loadTravelPlanChange()")
 
@@ -62,18 +38,14 @@ def loadTravelPlanChange():
     update_travel_itinerary_query=f"Update the travel itinerary {detailed_travel_itinerary} as per the request:"
     update_travel_itinerary_query=f"{update_travel_itinerary_query} {travel_itinerary_change}"
 
-    print("aitTravelPlanFrame.py -> loadTravelPlanChange() -> GenAI Query for Changing Detailed Travel Plan: ", update_travel_itinerary_query)
-    genAIClient = streamlit.session_state["genAIClient"]
+    print("aitTravelPlanFrame.py -> loadTravelPlanChange() -> GenAI Query for Changing Detailed Travel Plan: ", update_travel_itinerary_query)  
     
-    update_travel_itinerary_query_response = genAIClient.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=update_travel_itinerary_query,
-        config={
-          "response_mime_type": "application/json",
-            "response_schema": list[TravelPlan]
-        }
-    )
-    detailed_travel_itinerary = json.loads(update_travel_itinerary_query_response.text)
+    streamlit.session_state["return_type"] = "TravelPlanList"
+    streamlit.session_state["genAIQuery"] = update_travel_itinerary_query
+
+    aitGenAIQuery.executeGenAIQuery()
+
+    detailed_travel_itinerary = streamlit.session_state["genAIQueryOutput"]
     print("aitTravelPlanFrame.py -> loadTravelPlanChange() -> Updated Detailed Travel Itinerary response:", detailed_travel_itinerary)
 
     streamlit.session_state["previous_detailed_travel_itinerary"] = streamlit.session_state["detailed_travel_itinerary"]
@@ -110,8 +82,6 @@ def generateDetailedTravelPlan():
 
   print("aitTravelPlanFrame.py -> generateDetailedTravelPlan() -> Selected cities for travel plan: ", selected_cities_list)
 
-  genAIClient = streamlit.session_state["genAIClient"]
-
   if streamlit.session_state["travelCosts"] == "Budget":
     detailed_travel_itinerary_query=f"Create a travel plan for {selected_cities_list} with least costs"
   elif streamlit.session_state["travelCosts"] == "Standard":
@@ -127,15 +97,12 @@ def generateDetailedTravelPlan():
 
   print("aitTravelPlanFrame.py -> generateDetailedTravelPlan() -> GenAI Query for Detailed Travel Plan: ", detailed_travel_itinerary_query)
   
-  detailed_travel_itinerary_response = genAIClient.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=detailed_travel_itinerary_query,
-      config={
-        "response_mime_type": "application/json",
-          "response_schema": list[TravelPlan]
-      }
-  )
-  detailed_travel_itinerary = json.loads(detailed_travel_itinerary_response.text)
+  streamlit.session_state["return_type"] = "TravelPlanList"
+  streamlit.session_state["genAIQuery"] = detailed_travel_itinerary_query
+
+  aitGenAIQuery.executeGenAIQuery()
+
+  detailed_travel_itinerary = streamlit.session_state["genAIQueryOutput"]
   print("aitTravelPlanFrame.py -> generateDetailedTravelPlan() -> Detailed Travel Itinerary response:", detailed_travel_itinerary)
   streamlit.session_state["detailed_travel_itinerary"] = detailed_travel_itinerary
 
