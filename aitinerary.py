@@ -1,10 +1,12 @@
 #%%writefile app.py
 
 import streamlit
-from google import genai
 import json
 import requests
+
 from streamlit_js_eval import get_geolocation
+from google import genai
+from openai import OpenAI
 
 import aitTravelDetailsFrame
 import aitDestinationFrame
@@ -54,18 +56,48 @@ def getCurrentLocation():
 streamlit.title("AITinerary")
 streamlit.set_page_config(page_title="AITinerary", layout="wide")
 
-@streamlit.dialog("Enter Keys")
+
+def choose_genai_client():  
+  print("aitinerary.py -> choose_genai_client()")
+  genai_client = streamlit.radio(
+    label="GenAI Clients available:",
+    options=["Gemini", "GPT-5"],
+    captions=["Google", "OpenAI"]
+  )
+
+  streamlit.success(f"GenAI Client chosen: {genai_client}")
+  streamlit.session_state["genai_client"] = genai_client
+
+
 def enter_keys():
-  gemini_api_key = streamlit.text_input ("Gemini API Key", type="password")
+  print("aitinerary.py -> enter_keys()")
+  if streamlit.session_state["genai_client"] == "Gemini":
+    genai_api_key = streamlit.text_input ("Gemini API Key", type="password")
+  elif streamlit.session_state["genai_client"] == "GPT-5":
+    genai_api_key = streamlit.text_input ("OpenAI API Key", type="password")
+
   google_maps_api_key = streamlit.text_input ("Google Maps API Key", type="password")
   if streamlit.button("Submit"):
-    streamlit.session_state["gemini_api_key"] = gemini_api_key
+    streamlit.session_state["genai_api_key"] = genai_api_key
     streamlit.session_state["google_maps_api_key"] = google_maps_api_key
-    streamlit.session_state["genAIClient"] = genai.Client(api_key=gemini_api_key)
-    streamlit.rerun()
 
-if "gemini_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
-  enter_keys()
+    if streamlit.session_state["genai_client"] == "Gemini":
+      streamlit.session_state["genAIClient"] = genai.Client(api_key=genai_api_key)
+    elif streamlit.session_state["genai_cleint"] == "GPT-5":
+      streamlit.session_state["genAIClient"] = OpenAI(api_key=genai_api_key)
+
+
+@streamlit.dialog("Initialize GenAI Client")
+def initialize_genai_client():
+  if "genai_client" not in streamlit.session_state:
+    choose_genai_client()
+  elif "genai_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
+    enter_keys()
+  streamlit.rerun()
+
+
+if "genai_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
+  initialize_genai_client()
 else:
   getCurrentLocation()
   current_city=streamlit.session_state["current_city_name"]
@@ -80,4 +112,3 @@ else:
     aitDestinationFrame.loadDestinationDetailsFrame()
   with streamlit.session_state["detailedTravelPlan"]:
     aitTravelPlanFrame.loadDetailedTravelPlanFrame()
-    
