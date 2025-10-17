@@ -82,11 +82,18 @@ def executeOpenAIQuery():
     print("aitGenAIQuery.py -> executeOpenAIQuery()")
 
     genAIClient = streamlit.session_state["genAIClient"]
-    openai_query_response = genAIClient.responses.parse(
-        model="gpt-5",
-        input=streamlit.session_state["genAIQuery"],
-        text_format=streamlit.session_state["response_format"]
-    )
+
+    if streamlit.session_state["response_format"] is None:
+        openai_query_response = genAIClient.responses.parse(
+            model="gpt-5",
+            input=streamlit.session_state["genAIQuery"]
+        )
+    else:
+        openai_query_response = genAIClient.responses.parse(
+            model="gpt-5",
+            input=streamlit.session_state["genAIQuery"],
+            text_format=streamlit.session_state["response_format"]
+        )
 
     openai_query_response_json = json.loads(openai_query_response.model_dump_json(indent=2))
 

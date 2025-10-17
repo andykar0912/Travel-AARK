@@ -87,7 +87,7 @@ def enterKeys():
 
     if streamlit.session_state["genai_client"] == "Gemini":
       streamlit.session_state["genAIClient"] = genai.Client(api_key=genai_api_key)
-    elif streamlit.session_state["genai_cleint"] == "GPT-5":
+    elif streamlit.session_state["genai_client"] == "GPT-5":
       streamlit.session_state["genAIClient"] = OpenAI(api_key=genai_api_key)
 
     streamlit.rerun()
