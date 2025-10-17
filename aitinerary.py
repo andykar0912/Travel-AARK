@@ -57,20 +57,24 @@ streamlit.title("AITinerary")
 streamlit.set_page_config(page_title="AITinerary", layout="wide")
 
 
-def choose_genai_client():  
-  print("aitinerary.py -> choose_genai_client()")
+def chooseGenaiClient():  
+  print("aitinerary.py -> chooseGenaiClient()")
   genai_client = streamlit.radio(
     label="GenAI Clients available:",
     options=["Gemini", "GPT-5"],
-    captions=["Google", "OpenAI"]
+    captions=["Google", "OpenAI"],
+    index=None
   )
 
-  streamlit.success(f"GenAI Client chosen: {genai_client}")
-  streamlit.session_state["genai_client"] = genai_client
+  if genai_client is not None:
+    print(f"aitinerary.py -> chooseGenaiClient() -> GenAI Client chosen is: {genai_client}")
+    streamlit.session_state["genai_client"] = genai_client
+
+    streamlit.rerun()
 
 
-def enter_keys():
-  print("aitinerary.py -> enter_keys()")
+def enterKeys():
+  print("aitinerary.py -> enterKeys()")
   if streamlit.session_state["genai_client"] == "Gemini":
     genai_api_key = streamlit.text_input ("Gemini API Key", type="password")
   elif streamlit.session_state["genai_client"] == "GPT-5":
@@ -86,18 +90,20 @@ def enter_keys():
     elif streamlit.session_state["genai_cleint"] == "GPT-5":
       streamlit.session_state["genAIClient"] = OpenAI(api_key=genai_api_key)
 
+    streamlit.rerun()
+
 
 @streamlit.dialog("Initialize GenAI Client")
-def initialize_genai_client():
+def initializeGenAIClient():
+  print("aitinerary.py -> initializeGenAIClient()")
   if "genai_client" not in streamlit.session_state:
-    choose_genai_client()
+    chooseGenaiClient()
   elif "genai_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
-    enter_keys()
-  streamlit.rerun()
+    enterKeys()
 
 
 if "genai_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
-  initialize_genai_client()
+  initializeGenAIClient()
 else:
   getCurrentLocation()
   current_city=streamlit.session_state["current_city_name"]
