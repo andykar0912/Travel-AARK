@@ -19,9 +19,9 @@ def getCurrentLocation():
   loc = get_geolocation()
 
   if loc:
-    print("aitinerary.py -> Location data:", loc)
-    print(f"aitinerary.py -> Latitude: {loc['coords']['latitude']}")
-    print(f"aitinerary.py -> Longitude: {loc['coords']['longitude']}")
+    print("aitinerary.py -> getCurrentLocation() -> Location data:", loc)
+    print(f"aitinerary.py -> getCurrentLocation() -> Latitude: {loc['coords']['latitude']}")
+    print(f"aitinerary.py -> getCurrentLocation() -> Longitude: {loc['coords']['longitude']}")
 
     google_maps_api_key = streamlit.session_state["google_maps_api_key"]
 
@@ -105,7 +105,9 @@ def initializeGenAIClient():
 if "genai_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
   initializeGenAIClient()
 else:
-  getCurrentLocation()
+  if "current_city_name" not in streamlit.session_state or "current_country_name" not in streamlit.session_state:
+    getCurrentLocation()
+
   current_city=streamlit.session_state["current_city_name"]
   current_country=streamlit.session_state["current_country_name"]
   current_location=f"{current_city}, {current_country}"
