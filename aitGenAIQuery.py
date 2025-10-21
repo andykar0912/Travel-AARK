@@ -48,9 +48,62 @@ class TravelPlan(pydantic.BaseModel):
 class TravelPlanList(pydantic.BaseModel):
     travel_plan_list: list[TravelPlan]
 
-
 class DestNameList(pydantic.BaseModel):
     dest_name_list: list[str]
+
+################################################ NEW ########################################################
+
+
+class JourneyLeg(pydantic.BaseModel):
+    start_location: str
+    end_location: str
+    transport_mode: str
+    transport_operator: str
+    transport_number: str
+    start_date: str
+    start_time: str
+    end_date: str
+    end_time: str
+    travel_time: str
+
+
+class OnwardJourney(pydantic.BaseModel):
+    travel_date: str
+    start_city: str
+    start_country: str
+    end_city: str
+    end_country: str
+    journey_legs: list[JourneyLeg]
+
+
+class VisitAttraction(pydantic.BaseModel):
+    tourist_attraction: str
+    start_location: str
+    end_location: str
+    transport_mode: str
+    transport_operator: str
+    transport_number: str
+    start_time: str
+    end_time: str
+    travel_time: str
+    tour_operator: str
+    tour_activities: list[str]
+    tour_time: str
+
+class Daytrip(pydantic.BaseModel):
+    tour_date: str
+    daytrip_tours: list[VisitAttraction]
+
+class LocalTravelPlan(pydantic.BaseModel):
+    onward_journey: OnwardJourney
+    daytrips: list[Daytrip]
+
+class DetailedTravelPlan(pydantic.BaseModel):
+    detailed_travel_plan: list[LocalTravelPlan]
+
+
+
+################################################ NEW ########################################################
 
 
 def executeGeminiQuery():
@@ -122,6 +175,9 @@ def executeGenAIQuery():
         elif streamlit.session_state["return_type"] == "DestNameList":
             streamlit.session_state["response_format"] = DestNameList
             streamlit.session_state["return_attribute"] = "dest_name_list"
+        elif streamlit.session_state["return_type"] == "DetailedTravelPlan":
+            streamlit.session_state["response_format"] = DetailedTravelPlan
+            streamlit.session_state["return_attribute"] = "detailed_travel_plan"
 
     if streamlit.session_state["genai_client"] == "Gemini":
         print("aitGenAIQuery.py -> executeGenAIQuery() -> Executing GenAI Query in Gemini")
