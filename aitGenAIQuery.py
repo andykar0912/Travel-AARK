@@ -56,7 +56,11 @@ class DestNameList(pydantic.BaseModel):
 
 class JourneyLeg(pydantic.BaseModel):
     start_location: str
+    start_city: str
+    start_country: str
     end_location: str
+    end_city: str
+    end_country: str
     transport_mode: str
     transport_operator: str
     transport_number: str
@@ -79,7 +83,11 @@ class OnwardJourney(pydantic.BaseModel):
 class VisitAttraction(pydantic.BaseModel):
     tourist_attraction: str
     start_location: str
+    start_city: str
+    start_country: str
     end_location: str
+    end_city: str
+    end_country: str
     transport_mode: str
     transport_operator: str
     transport_number: str

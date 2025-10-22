@@ -103,7 +103,11 @@ def loadJourneyLegs():
 
     df_column_config = {
         "start_location": "Start Location",
+        "start_city": "Start City",
+        "start_country": "Start Country",
         "end_location": "End Location",
+        "end_city": "End City",
+        "end_country": "End Country",
         "transport_mode": "Transport Mode",
         "transport_operator": "Transport Operator",
         "transport_number": "Transport Number",
@@ -148,8 +152,8 @@ def loadDaytrips():
             "tour_city": tour_city,
             "tour_date": tour_date,
             "tourist_attraction": daytrip_tours_entry["tourist_attraction"],
-            "start_location": daytrip_tours_entry["start_location"],
-            "end_location": daytrip_tours_entry["end_location"],
+            "start_location": f"{daytrip_tours_entry['start_location']}, {daytrip_tours_entry['start_city']}, {daytrip_tours_entry['start_country']}",
+            "end_location": f"{daytrip_tours_entry['end_location']}, {daytrip_tours_entry['end_city']}, {daytrip_tours_entry['end_country']}",
             "transport_mode": daytrip_tours_entry["transport_mode"],
             "transport_operator": daytrip_tours_entry["transport_operator"],
             "transport_number": daytrip_tours_entry["transport_number"],
@@ -191,7 +195,8 @@ def loadDaytrips():
       )
     else:
       print(f"aitTravelPlanFrame.py -> loadDaytrips() -> No Daytrips in {daytrip_city}, {daytrip_country}")
-      del streamlit.session_state["df_dt_select_event"]
+      if "df_dt_select_event" in streamlit.session_state:
+        del streamlit.session_state["df_dt_select_event"]
 
 
 def loadTravelPlanTableFrame():
