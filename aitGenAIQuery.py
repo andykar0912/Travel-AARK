@@ -107,6 +107,8 @@ class DetailedTravelPlan(pydantic.BaseModel):
 
 
 def executeGeminiQuery():
+    print("aitGenAIQuery.py -> executeGeminiQuery()")
+
     if streamlit.session_state["response_format"] is None:
         gemini_config_response = None
     else:
