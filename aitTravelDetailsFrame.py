@@ -25,9 +25,9 @@ def loadPassengersFrame():
 
     streamlit.subheader("Passengers")
 
-    streamlit.session_state["adults"]=streamlit.text_input("No. of adults: ")
-    streamlit.session_state["seniors"]=streamlit.text_input("No. of seniors (>60 years): ")
-    streamlit.session_state["children"]=streamlit.text_input("No. of children: ")
+    streamlit.session_state["adults"]=streamlit.number_input("No. of adults: ", min_value=0)
+    streamlit.session_state["seniors"]=streamlit.number_input("No. of seniors (>60 years): ", min_value=0)
+    streamlit.session_state["children"]=streamlit.number_input("No. of children: ", min_value=0)
 
 
 

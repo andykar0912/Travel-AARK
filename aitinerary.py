@@ -53,9 +53,6 @@ def getCurrentLocation():
     streamlit.info("Click 'Allow' in your browser to share location.")
 
 
-streamlit.title("AITinerary")
-streamlit.set_page_config(page_title="AITinerary", layout="wide")
-
 
 def chooseGenaiClient():  
   print("aitinerary.py -> chooseGenaiClient()")
@@ -80,10 +77,13 @@ def enterKeys():
   elif streamlit.session_state["genai_client"] == "GPT-5":
     genai_api_key = streamlit.text_input ("OpenAI API Key", type="password")
 
-  google_maps_api_key = streamlit.text_input ("Google Maps API Key", type="password")
+  if "google_maps_api_key" not in streamlit.session_state or streamlit.session_state["google_maps_api_key"] is None:
+    google_maps_api_key = streamlit.text_input ("Google Maps API Key", type="password")
+
   if streamlit.button("Submit"):
     streamlit.session_state["genai_api_key"] = genai_api_key
-    streamlit.session_state["google_maps_api_key"] = google_maps_api_key
+    if "google_maps_api_key" not in streamlit.session_state:
+      streamlit.session_state["google_maps_api_key"] = google_maps_api_key
 
     if streamlit.session_state["genai_client"] == "Gemini":
       streamlit.session_state["genAIClient"] = genai.Client(api_key=genai_api_key)
@@ -102,11 +102,23 @@ def initializeGenAIClient():
     enterKeys()
 
 
+streamlit.title("AITinerary")
+streamlit.set_page_config(page_title="AITinerary", layout="wide")
+
+if streamlit.button("Switch GenAI Client"):
+  print("aitinerary.py -> Switching GenAI Client")
+  del streamlit.session_state["genai_api_key"]
+  del streamlit.session_state["genai_client"]
+  # initializeGenAIClient()
+
+
 if "genai_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
   initializeGenAIClient()
 else:
   if "current_city_name" not in streamlit.session_state or "current_country_name" not in streamlit.session_state:
     getCurrentLocation()
+
+  streamlit.success(f"GenAI Client used: {streamlit.session_state['genai_client']}")
 
   current_city=streamlit.session_state["current_city_name"]
   current_country=streamlit.session_state["current_country_name"]
