@@ -269,8 +269,15 @@ def loadTravelMap():
       selected_row_index_tp = streamlit.session_state["df_tp_select_event"].selection["rows"][0]
       selected_row_index = streamlit.session_state["df_jl_select_event"].selection["rows"][0]
 
-      from_location = f"{streamlit.session_state['detailed_travel_itinerary'][selected_row_index_tp]['onward_journey']['journey_legs'][selected_row_index]['start_location']}"
-      to_location = f"{streamlit.session_state['detailed_travel_itinerary'][selected_row_index_tp]['onward_journey']['journey_legs'][selected_row_index]['end_location']}"
+      from_city_location = f"{streamlit.session_state['detailed_travel_itinerary'][selected_row_index_tp]['onward_journey']['journey_legs'][selected_row_index]['start_location']}"
+      from_city = f"{streamlit.session_state['detailed_travel_itinerary'][selected_row_index_tp]['onward_journey']['journey_legs'][selected_row_index]['start_city']}"
+      from_country = f"{streamlit.session_state['detailed_travel_itinerary'][selected_row_index_tp]['onward_journey']['journey_legs'][selected_row_index]['start_country']}"
+      from_location = f"{from_city_location}, {from_city}, {from_country}"
+
+      to_city_location = f"{streamlit.session_state['detailed_travel_itinerary'][selected_row_index_tp]['onward_journey']['journey_legs'][selected_row_index]['end_location']}"
+      to_city = f"{streamlit.session_state['detailed_travel_itinerary'][selected_row_index_tp]['onward_journey']['journey_legs'][selected_row_index]['end_city']}"
+      to_country = f"{streamlit.session_state['detailed_travel_itinerary'][selected_row_index_tp]['onward_journey']['journey_legs'][selected_row_index]['end_country']}"
+      to_location = f"{to_city_location}, {to_city}, {to_country}"
 
       print(f"aitTravelPlanFrame.py -> loadTravelMap() -> Selected Row in Onward Journey Table from: {from_location} to {to_location}")
 

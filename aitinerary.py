@@ -105,6 +105,9 @@ def initializeGenAIClient():
 streamlit.title("AITinerary")
 streamlit.set_page_config(page_title="AITinerary", layout="wide")
 
+if "genai_client" in streamlit.session_state:
+  streamlit.success(f"GenAI Client used: {streamlit.session_state['genai_client']}")
+
 if streamlit.button("Switch GenAI Client"):
   print("aitinerary.py -> Switching GenAI Client")
   del streamlit.session_state["genai_api_key"]
@@ -117,8 +120,6 @@ if "genai_api_key" not in streamlit.session_state or "google_maps_api_key" not i
 else:
   if "current_city_name" not in streamlit.session_state or "current_country_name" not in streamlit.session_state:
     getCurrentLocation()
-
-  streamlit.success(f"GenAI Client used: {streamlit.session_state['genai_client']}")
 
   current_city=streamlit.session_state["current_city_name"]
   current_country=streamlit.session_state["current_country_name"]
