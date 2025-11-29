@@ -34,6 +34,7 @@ def getCurrentLocation():
         # print("Detailed Current location:", json.dumps(detailed_current_location,indent=2))
 
         # using the detailed location, find the city (usually "types": ["locality","political"]) and the country (usually "types": ["country","political"])
+        print(f"{detailed_current_location}")
         for address_component in detailed_current_location['results'][0]['address_components']:
           if "locality" in address_component['types'] and "political" in address_component['types']:
             current_city_name = address_component['long_name']
@@ -102,18 +103,22 @@ def initializeGenAIClient():
     enterKeys()
 
 
-streamlit.title("AITinerary")
-streamlit.set_page_config(page_title="AITinerary", layout="wide")
+aitHeaderFrame, aitPicFrame = streamlit.columns(2)
 
-if "genai_client" in streamlit.session_state:
-  streamlit.success(f"GenAI Client used: {streamlit.session_state['genai_client']}")
+with aitHeaderFrame:
+  streamlit.title("AITinerary")
+  streamlit.set_page_config(page_title="AITinerary", layout="wide")
 
-if streamlit.button("Switch GenAI Client"):
-  print("aitinerary.py -> Switching GenAI Client")
-  del streamlit.session_state["genai_api_key"]
-  del streamlit.session_state["genai_client"]
-  # initializeGenAIClient()
+  if "genai_client" in streamlit.session_state:
+    streamlit.success(f"GenAI Client used: {streamlit.session_state['genai_client']}")
 
+  if streamlit.button("Switch GenAI Client"):
+    print("aitinerary.py -> Switching GenAI Client")
+    del streamlit.session_state["genai_api_key"]
+    del streamlit.session_state["genai_client"]
+
+with aitPicFrame:
+  streamlit.image("world_map.png", width=300)
 
 if "genai_api_key" not in streamlit.session_state or "google_maps_api_key" not in streamlit.session_state:
   initializeGenAIClient()
